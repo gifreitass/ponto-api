@@ -1,6 +1,40 @@
 import os
+
 from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = URL.create(
+    drivername="postgresql+psycopg2",
+    username=os.getenv("DB_USER"),
+    password=os.getenv("DB_PASSWORD"),
+    host=os.getenv("DB_HOST"),
+    port=int(os.getenv("DB_PORT", "5432")),
+    database=os.getenv("DB_NAME"),
+)
+
+TEST_DATABASE = os.getenv("TEST_DATABASE_URL", 'false').lower() in ('true', 'yes')
+
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL não configurada")
+
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+)
+
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    expire_on_commit=False,
+)
+
+class Base(DeclarativeBase):
+    pass
+
+def get_db():
+    with SessionLocal() as db:
+        yield db
